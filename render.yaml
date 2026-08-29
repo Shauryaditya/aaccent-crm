@@ -15,11 +15,10 @@ services:
       mountPath: /var/data
       sizeGB: 1
 
+staticSites:
   # 2. React Vite Frontend Static Site
-  - type: static
-    name: aaccent-crm-frontend
+  - name: aaccent-crm-frontend
     env: static
-    plan: free
     rootDir: frontend
     buildCommand: npm install && npm run build
     publishDir: dist
