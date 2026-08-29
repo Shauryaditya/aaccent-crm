@@ -1,14 +1,22 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const fs = require('fs');
-const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
-const DATA_FILE = path.join(DATA_DIR, 'students.json');
 
+// Initialize Supabase Client
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SECRET_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('CRITICAL ERROR: SUPABASE_URL and SUPABASE_SECRET_KEY environment variables must be defined!');
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 
 // --- Aaccent Fee Matrix (from www.aaccent.in) ---
@@ -29,33 +37,6 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // --- Helper Functions ---
-function readDatabase() {
-  try {
-    if (!fs.existsSync(DATA_FILE)) {
-      // Create empty DB file if it doesn't exist
-      fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-      fs.writeFileSync(DATA_FILE, JSON.stringify([]));
-      return [];
-    }
-    const raw = fs.readFileSync(DATA_FILE, 'utf8');
-    return JSON.parse(raw);
-  } catch (err) {
-    console.error('Error reading database file:', err);
-    return [];
-  }
-}
-
-function writeDatabase(data) {
-  try {
-    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-    return true;
-  } catch (err) {
-    console.error('Error writing to database file:', err);
-    return false;
-  }
-}
-
 function parseClassNumber(classString) {
   if (!classString) return null;
   const match = classString.match(/\d+/);
@@ -95,13 +76,27 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 // 2. Get All Students
-app.get('/api/students', (req, res) => {
-  const students = readDatabase();
-  res.json(students);
+app.get('/api/students', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('students')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Supabase fetch error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json(data || []);
+  } catch (err) {
+    console.error('API Error fetching students:', err);
+    res.status(500).json({ error: 'Internal server error while loading database.' });
+  }
 });
 
 // 3. Add Student Record
-app.post('/api/students', (req, res) => {
+app.post('/api/students', async (req, res) => {
   const { name, parentName, phone, email, class: selectedClass, board, subjects, status } = req.body;
   
   // Basic validation
@@ -114,76 +109,117 @@ app.post('/api/students', (req, res) => {
     return res.status(400).json({ error: 'Invalid class & subjects combination. No fee is defined.' });
   }
   
-  const students = readDatabase();
-  const newStudent = {
-    id: Date.now().toString(),
-    name,
-    parentName,
-    phone,
-    email: email || '',
-    class: selectedClass,
-    board,
-    subjects: parseInt(subjects, 10),
-    fee: calculatedFee,
-    status: status || 'Pending'
-  };
-  
-  students.push(newStudent);
-  writeDatabase(students);
-  
-  res.status(201).json(newStudent);
+  try {
+    const { data, error } = await supabase
+      .from('students')
+      .insert([{
+        id: Date.now().toString(),
+        name,
+        parentName,
+        phone,
+        email: email || '',
+        class: selectedClass,
+        board,
+        subjects: parseInt(subjects, 10),
+        fee: calculatedFee,
+        status: status || 'Pending'
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Supabase insert error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+    
+    res.status(201).json(data);
+  } catch (err) {
+    console.error('API Error adding student:', err);
+    res.status(500).json({ error: 'Internal server error while saving student.' });
+  }
 });
 
 // 4. Update Student Record
-app.put('/api/students/:id', (req, res) => {
+app.put('/api/students/:id', async (req, res) => {
   const { id } = req.params;
   const updates = req.body;
   
-  const students = readDatabase();
-  const index = students.findIndex(s => s.id === id);
-  
-  if (index === -1) {
-    return res.status(404).json({ error: 'Student record not found' });
-  }
-  
-  const currentStudent = students[index];
-  
-  // Merge updates
-  const merged = { ...currentStudent, ...updates };
-  
-  // Recalculate fee if class or subjects count changed
-  if (updates.class || updates.subjects) {
-    const calculatedFee = calculateFee(merged.class, merged.subjects);
-    if (!calculatedFee) {
-      return res.status(400).json({ error: 'Invalid class & subjects combination for fee recalculation.' });
+  try {
+    // Get current record
+    const { data: currentStudent, error: fetchError } = await supabase
+      .from('students')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !currentStudent) {
+      return res.status(404).json({ error: 'Student record not found' });
     }
-    merged.fee = calculatedFee;
+    
+    // Merge updates
+    const merged = { ...currentStudent, ...updates };
+    
+    // Recalculate fee if class or subjects count changed
+    if (updates.class || updates.subjects) {
+      const calculatedFee = calculateFee(merged.class, merged.subjects);
+      if (!calculatedFee) {
+        return res.status(400).json({ error: 'Invalid class & subjects combination for fee recalculation.' });
+      }
+      merged.fee = calculatedFee;
+    }
+    
+    merged.subjects = parseInt(merged.subjects, 10);
+    
+    // Update in Supabase
+    const { data: updatedStudent, error: updateError } = await supabase
+      .from('students')
+      .update({
+        name: merged.name,
+        parentName: merged.parentName,
+        phone: merged.phone,
+        email: merged.email,
+        class: merged.class,
+        board: merged.board,
+        subjects: merged.subjects,
+        fee: merged.fee,
+        status: merged.status
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Supabase update error:', updateError);
+      return res.status(500).json({ error: updateError.message });
+    }
+    
+    res.json(updatedStudent);
+  } catch (err) {
+    console.error('API Error updating student:', err);
+    res.status(500).json({ error: 'Internal server error while saving updates.' });
   }
-  
-  // Ensure integers
-  merged.subjects = parseInt(merged.subjects, 10);
-  
-  students[index] = merged;
-  writeDatabase(students);
-  
-  res.json(merged);
 });
 
 // 5. Delete Student Record
-app.delete('/api/students/:id', (req, res) => {
+app.delete('/api/students/:id', async (req, res) => {
   const { id } = req.params;
   
-  let students = readDatabase();
-  const exists = students.some(s => s.id === id);
-  
-  if (!exists) {
-    return res.status(404).json({ error: 'Student record not found' });
+  try {
+    const { error } = await supabase
+      .from('students')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Supabase delete error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+    
+    res.json({ success: true, id });
+  } catch (err) {
+    console.error('API Error deleting student:', err);
+    res.status(500).json({ error: 'Internal server error while deleting record.' });
   }
-  
-  students = students.filter(s => s.id !== id);
-  writeDatabase(students);
-  
-  res.json({ success: true, id });
 });
 
 // Start Server

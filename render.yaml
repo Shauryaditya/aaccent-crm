@@ -8,12 +8,10 @@ services:
     buildCommand: npm install
     startCommand: node server.js
     envVars:
-      - key: DATA_DIR
-        value: /var/data
-    disk:
-      name: crm-db-disk
-      mountPath: /var/data
-      sizeGB: 1
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
 
   # 2. React Vite Frontend Static Site
   - type: web
