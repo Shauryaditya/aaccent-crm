@@ -802,6 +802,7 @@ h1, h2, h3, h4, h5, h6 {
 .modal-box {
   width: 100%;
   max-width: 680px;
+  max-height: 90vh;
   background: var(--white);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
@@ -819,6 +820,7 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   justify-content: space-between;
   background-color: var(--neutral-light);
+  flex-shrink: 0;
 }
 
 .modal-title-text {
@@ -841,7 +843,11 @@ h1, h2, h3, h4, h5, h6 {
 
 .modal-form {
   padding: 1.5rem;
+  overflow-y: auto;
+  max-height: calc(90vh - 65px);
+  flex-grow: 1;
 }
+
 
 /* Form Layout Grids */
 .modal-grid-row {
@@ -952,9 +958,28 @@ h1, h2, h3, h4, h5, h6 {
     padding-right: 0;
   }
 
-  .modal-grid-row, .modal-grid-row-three {
+  .modal-form {
+    padding: 1rem;
+    max-height: calc(90vh - 55px);
+  }
+
+  .modal-grid-row {
     grid-template-columns: 1fr;
     gap: 1rem;
+  }
+
+  .modal-grid-row-three {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.5rem !important;
+  }
+
+  .modal-grid-row-three label {
+    font-size: 0.6875rem !important;
+  }
+
+  .modal-grid-row-status-fee {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.75rem !important;
   }
 
   .filters-bar {

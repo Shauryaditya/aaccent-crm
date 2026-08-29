@@ -221,7 +221,7 @@ export default function StudentModal({ student, onClose, onSave }) {
             </div>
           </div>
 
-          <div className="modal-grid-row mt-4">
+          <div className="modal-grid-row modal-grid-row-status-fee mt-4">
             {/* Payment Status */}
             <div className="form-group">
               <label htmlFor="student-payment-status">Current Month Fee Status</label>
