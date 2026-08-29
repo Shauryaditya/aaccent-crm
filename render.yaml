@@ -1,0 +1,31 @@
+services:
+  # 1. Express Backend Web Service
+  - type: web
+    name: aaccent-crm-backend
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+    disk:
+      name: crm-db-disk
+      mountPath: /var/data
+      sizeGB: 1
+
+  # 2. React Vite Frontend Static Site
+  - type: static
+    name: aaccent-crm-frontend
+    env: static
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    publishDir: dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          name: aaccent-crm-backend
+          type: web
+          property: host
