@@ -3,7 +3,11 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import StudentModal from './components/StudentModal';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+let API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+API_BASE_URL = API_BASE_URL.replace(/\/+$/, '');
+if (!API_BASE_URL.endsWith('/api')) {
+  API_BASE_URL = `${API_BASE_URL}/api`;
+}
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
