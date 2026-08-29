@@ -15,13 +15,14 @@ services:
       mountPath: /var/data
       sizeGB: 1
 
-staticSites:
   # 2. React Vite Frontend Static Site
-  - name: aaccent-crm-frontend
-    env: static
+  - type: web
+    name: aaccent-crm-frontend
+    runtime: static
+    plan: free
     rootDir: frontend
     buildCommand: npm install && npm run build
-    publishDir: dist
+    staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
         fromService:
