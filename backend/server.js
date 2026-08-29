@@ -223,6 +223,11 @@ app.delete('/api/students/:id', async (req, res) => {
 });
 
 // Start Server
-app.listen(PORT, () => {
-  console.log(`Aaccent CRM API server running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Aaccent CRM API server running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
+
