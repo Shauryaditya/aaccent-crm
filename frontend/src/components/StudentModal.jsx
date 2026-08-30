@@ -21,7 +21,7 @@ export default function StudentModal({ student, onClose, onSave }) {
   const [board, setBoard] = useState('');
   const [subjects, setSubjects] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('Pending');
-  const [liveFee, setLiveFee] = useState(null);
+  const [customFee, setCustomFee] = useState('');
 
   const isEditing = !!student;
 
@@ -35,6 +35,7 @@ export default function StudentModal({ student, onClose, onSave }) {
       setBoard(student.board);
       setSubjects(student.subjects.toString());
       setPaymentStatus(student.status);
+      setCustomFee(student.fee !== undefined ? student.fee.toString() : '');
     } else {
       setName('');
       setParentName('');
@@ -44,41 +45,55 @@ export default function StudentModal({ student, onClose, onSave }) {
       setBoard('');
       setSubjects('');
       setPaymentStatus('Pending');
+      setCustomFee('');
     }
   }, [student]);
 
-  // Extract class number
   const classNum = selectedClass ? parseInt(selectedClass.replace(/\D/g, ''), 10) : null;
   const maxSubjects = (classNum === 4 || classNum === 5 || classNum === 11 || classNum === 12) ? 3 : 5;
 
-  // Auto-adjust subject option selection when class updates
-  useEffect(() => {
-    if (classNum && subjects) {
-      const currentSubjectsInt = parseInt(subjects, 10);
-      if (currentSubjectsInt > maxSubjects) {
-        setSubjects(maxSubjects.toString());
+  const handleClassChange = (e) => {
+    const val = e.target.value;
+    setSelectedClass(val);
+
+    const newClassNum = val ? parseInt(val.replace(/\D/g, ''), 10) : null;
+    const currentSubjectsInt = parseInt(subjects, 10);
+    let finalSubs = currentSubjectsInt;
+
+    if (newClassNum) {
+      const newMaxSubs = (newClassNum === 4 || newClassNum === 5 || newClassNum === 11 || newClassNum === 12) ? 3 : 5;
+      if (currentSubjectsInt > newMaxSubs) {
+        finalSubs = newMaxSubs;
+        setSubjects(newMaxSubs.toString());
       }
     }
-  }, [selectedClass, maxSubjects, subjects]);
 
-  // Live calculation of fee
-  useEffect(() => {
-    if (classNum && subjects) {
-      const subsInt = parseInt(subjects, 10);
-      const pricing = FEE_MATRIX[classNum];
-      if (pricing && pricing[subsInt]) {
-        setLiveFee(pricing[subsInt]);
-      } else {
-        setLiveFee(null);
+    if (newClassNum && finalSubs) {
+      const pricing = FEE_MATRIX[newClassNum];
+      if (pricing && pricing[finalSubs]) {
+        setCustomFee(pricing[finalSubs].toString());
       }
     } else {
-      setLiveFee(null);
+      setCustomFee('');
     }
-  }, [selectedClass, classNum, subjects]);
+  };
+
+  const handleSubjectsChange = (e) => {
+    const val = e.target.value;
+    setSubjects(val);
+
+    const subsInt = parseInt(val, 10);
+    if (classNum && subsInt) {
+      const pricing = FEE_MATRIX[classNum];
+      if (pricing && pricing[subsInt]) {
+        setCustomFee(pricing[subsInt].toString());
+      }
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!name || !parentName || !phone || !selectedClass || !board || !subjects) {
+    if (!name || !parentName || !phone || !selectedClass || !board || !subjects || customFee === '') {
       alert('Please fill out all required fields.');
       return;
     }
@@ -91,7 +106,8 @@ export default function StudentModal({ student, onClose, onSave }) {
       class: selectedClass,
       board,
       subjects: parseInt(subjects, 10),
-      status: paymentStatus
+      status: paymentStatus,
+      fee: parseInt(customFee, 10)
     };
 
     onSave(payload);
@@ -108,8 +124,7 @@ export default function StudentModal({ student, onClose, onSave }) {
         </div>
         
         <form onSubmit={handleSubmit} className="modal-form">
-          <div className="modal-grid-row">
-            {/* Student Name */}
+          <div className="modal-grid-row modal-grid-row-stack-mobile">
             <div className="form-group">
               <label htmlFor="student-name">Student Full Name <span className="required">*</span></label>
               <input 
@@ -121,7 +136,6 @@ export default function StudentModal({ student, onClose, onSave }) {
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
-            {/* Parent/Guardian */}
             <div className="form-group">
               <label htmlFor="parent-name">Parent / Guardian Name <span className="required">*</span></label>
               <input 
@@ -135,8 +149,7 @@ export default function StudentModal({ student, onClose, onSave }) {
             </div>
           </div>
 
-          <div className="modal-grid-row">
-            {/* Phone Number */}
+          <div className="modal-grid-row modal-grid-row-stack-mobile">
             <div className="form-group">
               <label htmlFor="student-phone">Phone Number <span className="required">*</span></label>
               <input 
@@ -149,7 +162,6 @@ export default function StudentModal({ student, onClose, onSave }) {
                 onChange={(e) => setPhone(e.target.value)}
               />
             </div>
-            {/* Email */}
             <div className="form-group">
               <label htmlFor="student-email">Email Address</label>
               <input 
@@ -163,14 +175,13 @@ export default function StudentModal({ student, onClose, onSave }) {
           </div>
 
           <div className="modal-grid-row-three">
-            {/* Class Selection */}
             <div className="form-group">
               <label htmlFor="student-class">Class <span className="required">*</span></label>
               <select 
                 id="student-class" 
                 required
                 value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
+                onChange={handleClassChange}
               >
                 <option value="" disabled>Select class</option>
                 <option value="Class 4">Class 4</option>
@@ -184,7 +195,6 @@ export default function StudentModal({ student, onClose, onSave }) {
                 <option value="Class 12">Class 12</option>
               </select>
             </div>
-            {/* Board */}
             <div className="form-group">
               <label htmlFor="student-board">Board <span className="required">*</span></label>
               <select 
@@ -201,7 +211,6 @@ export default function StudentModal({ student, onClose, onSave }) {
                 <option value="State Board">State Board</option>
               </select>
             </div>
-            {/* Subjects Count */}
             <div className="form-group">
               <label htmlFor="student-subjects">No. of Subjects <span className="required">*</span></label>
               <select 
@@ -209,7 +218,7 @@ export default function StudentModal({ student, onClose, onSave }) {
                 required 
                 disabled={!selectedClass}
                 value={subjects}
-                onChange={(e) => setSubjects(e.target.value)}
+                onChange={handleSubjectsChange}
               >
                 <option value="" disabled>Select subjects</option>
                 {[...Array(maxSubjects)].map((_, i) => (
@@ -222,9 +231,8 @@ export default function StudentModal({ student, onClose, onSave }) {
           </div>
 
           <div className="modal-grid-row modal-grid-row-status-fee mt-4">
-            {/* Payment Status */}
             <div className="form-group">
-              <label htmlFor="student-payment-status">Current Month Fee Status</label>
+              <label htmlFor="student-payment-status">Current Month Status</label>
               <select 
                 id="student-payment-status"
                 value={paymentStatus}
@@ -234,17 +242,20 @@ export default function StudentModal({ student, onClose, onSave }) {
                 <option value="Paid">Verified / Paid</option>
               </select>
             </div>
-            {/* Dynamic Fee Preview Box */}
-            <div className="fee-estimate-panel">
-              <div className="fee-estimate-inner">
-                <span className="fee-label">Calculated Fee:</span>
-                <span id="calculated-fee-display" className="fee-value">
-                  {liveFee ? `₹${liveFee.toLocaleString('en-IN')} / month` : 'Select details...'}
-                </span>
-              </div>
+            <div className="form-group">
+              <label htmlFor="student-fee">Monthly Tuition Fee (₹) <span className="required">*</span></label>
+              <input 
+                type="number" 
+                id="student-fee" 
+                required 
+                min="0"
+                placeholder="Calculated amount"
+                value={customFee}
+                onChange={(e) => setCustomFee(e.target.value)}
+              />
               {maxSubjects === 3 && (
-                <p id="fee-warning" className="fee-warning-text">
-                  ℹ️ Classes 4, 5, 11 & 12 are limited to a maximum of 3 subjects.
+                <p id="fee-warning" className="fee-warning-text" style={{ margin: '0.25rem 0 0 0' }}>
+                  ℹ️ Max 3 subjects allowed for Classes 4, 5, 11 & 12.
                 </p>
               )}
             </div>

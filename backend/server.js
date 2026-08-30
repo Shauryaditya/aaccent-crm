@@ -75,37 +75,76 @@ app.post('/api/auth/login', (req, res) => {
   }
 });
 
-// 2. Get All Students
+// 2. Get All Students (Supports month-wise payment/fee status merge)
 app.get('/api/students', async (req, res) => {
+  const { month } = req.query; // Expects format: YYYY-MM
+
   try {
-    const { data, error } = await supabase
+    // Fetch all student profiles
+    const { data: students, error: studentsError } = await supabase
       .from('students')
       .select('*')
       .order('created_at', { ascending: true });
 
-    if (error) {
-      console.error('Supabase fetch error:', error);
-      return res.status(500).json({ error: error.message });
+    if (studentsError) {
+      console.error('Supabase fetch students error:', studentsError);
+      return res.status(500).json({ error: studentsError.message });
     }
 
-    res.json(data || []);
+    if (!students || students.length === 0) {
+      return res.json([]);
+    }
+
+    // Merge month-specific payments if a month parameter is active
+    if (month) {
+      const { data: payments, error: paymentsError } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('month', month);
+
+      if (paymentsError) {
+        console.error('Supabase fetch payments error:', paymentsError);
+        return res.status(500).json({ error: paymentsError.message });
+      }
+
+      const paymentMap = {};
+      if (payments) {
+        payments.forEach(p => {
+          paymentMap[p.studentId] = p;
+        });
+      }
+
+      const mergedStudents = students.map(student => {
+        const payment = paymentMap[student.id];
+        return {
+          ...student,
+          status: payment ? payment.status : 'Pending',
+          fee: payment ? payment.amount : student.fee // Use adjusted monthly fee if custom payment record exists
+        };
+      });
+
+      return res.json(mergedStudents);
+    }
+
+    res.json(students);
   } catch (err) {
     console.error('API Error fetching students:', err);
     res.status(500).json({ error: 'Internal server error while loading database.' });
   }
 });
 
-// 3. Add Student Record
+// 3. Add Student Record (Supports base fee override)
 app.post('/api/students', async (req, res) => {
-  const { name, parentName, phone, email, class: selectedClass, board, subjects, status } = req.body;
+  const { name, parentName, phone, email, class: selectedClass, board, subjects, status, fee } = req.body;
   
   // Basic validation
   if (!name || !parentName || !phone || !selectedClass || !board || !subjects) {
     return res.status(400).json({ error: 'Missing required student registration fields.' });
   }
   
-  const calculatedFee = calculateFee(selectedClass, subjects);
-  if (!calculatedFee) {
+  // Use custom fee override if specified; otherwise compute standard rate
+  const finalFee = fee !== undefined ? parseInt(fee, 10) : calculateFee(selectedClass, subjects);
+  if (!finalFee && finalFee !== 0) {
     return res.status(400).json({ error: 'Invalid class & subjects combination. No fee is defined.' });
   }
   
@@ -121,7 +160,7 @@ app.post('/api/students', async (req, res) => {
         class: selectedClass,
         board,
         subjects: parseInt(subjects, 10),
-        fee: calculatedFee,
+        fee: finalFee,
         status: status || 'Pending'
       }])
       .select()
@@ -139,7 +178,8 @@ app.post('/api/students', async (req, res) => {
   }
 });
 
-// 4. Update Student Record
+
+// 4. Update Student Record (Supports custom base fee override)
 app.put('/api/students/:id', async (req, res) => {
   const { id } = req.params;
   const updates = req.body;
@@ -159,8 +199,10 @@ app.put('/api/students/:id', async (req, res) => {
     // Merge updates
     const merged = { ...currentStudent, ...updates };
     
-    // Recalculate fee if class or subjects count changed
-    if (updates.class || updates.subjects) {
+    // Respect custom fee update if provided; otherwise calculate on class/subject mutations
+    if (updates.fee !== undefined) {
+      merged.fee = parseInt(updates.fee, 10);
+    } else if (updates.class || updates.subjects) {
       const calculatedFee = calculateFee(merged.class, merged.subjects);
       if (!calculatedFee) {
         return res.status(400).json({ error: 'Invalid class & subjects combination for fee recalculation.' });
@@ -200,7 +242,90 @@ app.put('/api/students/:id', async (req, res) => {
   }
 });
 
-// 5. Delete Student Record
+// 5. Update Monthly Payment Status / Fee Adjustment (One-time and Toggling)
+app.put('/api/students/:id/payment', async (req, res) => {
+  const { id } = req.params;
+  const { month, status, amount } = req.body;
+
+  if (!month) {
+    return res.status(400).json({ error: 'Missing required "month" parameter.' });
+  }
+
+  try {
+    // Get student default fee profile
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (studentError || !student) {
+      return res.status(404).json({ error: 'Student record not found.' });
+    }
+
+    // Check if payment row already exists for this student and month
+    const { data: existingPayment, error: paymentFetchError } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('studentId', id)
+      .eq('month', month)
+      .maybeSingle();
+
+    let result;
+    if (existingPayment) {
+      // Update existing record
+      const updates = {};
+      if (status !== undefined) updates.status = status;
+      if (amount !== undefined) updates.amount = parseInt(amount, 10);
+
+      const { data, error } = await supabase
+        .from('payments')
+        .update(updates)
+        .eq('id', existingPayment.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase update payment error:', error);
+        return res.status(500).json({ error: error.message });
+      }
+      result = data;
+    } else {
+      // Create new record
+      const insertData = {
+        id: Date.now().toString(),
+        studentId: id,
+        month,
+        amount: amount !== undefined ? parseInt(amount, 10) : student.fee,
+        status: status || 'Pending'
+      };
+
+      const { data, error } = await supabase
+        .from('payments')
+        .insert([insertData])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase insert payment error:', error);
+        return res.status(500).json({ error: error.message });
+      }
+      result = data;
+    }
+
+    res.json({
+      studentId: id,
+      month: result.month,
+      status: result.status,
+      fee: result.amount
+    });
+  } catch (err) {
+    console.error('API Error updating payment:', err);
+    res.status(500).json({ error: 'Internal server error while saving payment details.' });
+  }
+});
+
+// 6. Delete Student Record
 app.delete('/api/students/:id', async (req, res) => {
   const { id } = req.params;
   
@@ -221,6 +346,7 @@ app.delete('/api/students/:id', async (req, res) => {
     res.status(500).json({ error: 'Internal server error while deleting record.' });
   }
 });
+
 
 // Start Server
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {

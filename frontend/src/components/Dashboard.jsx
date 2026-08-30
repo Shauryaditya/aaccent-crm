@@ -2,7 +2,17 @@ import React, { useState } from 'react';
 import StatsGrid from './StatsGrid';
 import StudentTable from './StudentTable';
 
-export default function Dashboard({ students, onLogout, onTogglePayment, onAddStudent, onEditStudent, onDeleteStudent }) {
+export default function Dashboard({ 
+  students, 
+  selectedMonth,
+  onMonthChange,
+  onLogout, 
+  onTogglePayment, 
+  onAdjustFee,
+  onAddStudent, 
+  onEditStudent, 
+  onDeleteStudent 
+}) {
   const [searchQuery, setSearchQuery] = useState('');
   const [classFilter, setClassFilter] = useState('all');
   const [boardFilter, setBoardFilter] = useState('all');
@@ -74,7 +84,7 @@ export default function Dashboard({ students, onLogout, onTogglePayment, onAddSt
       {/* Directory Section */}
       <section className="directory-section glassmorphism">
         <div className="directory-header">
-          <h2 class="section-title">Student Directory & Billings</h2>
+          <h2 className="section-title">Student Directory & Billings</h2>
           <button onClick={onAddStudent} className="btn btn-add">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             Add New Student
@@ -84,7 +94,7 @@ export default function Dashboard({ students, onLogout, onTogglePayment, onAddSt
         {/* Filters Bar */}
         <div className="filters-bar">
           <div className="search-box">
-            <svg className="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <svg className="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             <input 
               type="text" 
               placeholder="Search by name, parent name, phone..."
@@ -93,6 +103,18 @@ export default function Dashboard({ students, onLogout, onTogglePayment, onAddSt
             />
           </div>
           <div className="filter-dropdowns">
+            {/* Billing Month Picker */}
+            <div className="month-picker-container" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Month:</span>
+              <input 
+                type="month" 
+                value={selectedMonth} 
+                onChange={(e) => onMonthChange(e.target.value)}
+                className="dropdown-filter"
+                style={{ padding: '0.55rem 0.65rem', minWidth: '150px' }}
+              />
+            </div>
+
             <select 
               value={classFilter} 
               onChange={(e) => setClassFilter(e.target.value)}
@@ -145,6 +167,7 @@ export default function Dashboard({ students, onLogout, onTogglePayment, onAddSt
         <StudentTable 
           students={filteredStudents}
           onTogglePayment={onTogglePayment}
+          onAdjustFee={onAdjustFee}
           onEditStudent={onEditStudent}
           onDeleteStudent={onDeleteStudent}
           onAddFirstClick={onAddStudent}
@@ -153,3 +176,4 @@ export default function Dashboard({ students, onLogout, onTogglePayment, onAddSt
     </div>
   );
 }
+

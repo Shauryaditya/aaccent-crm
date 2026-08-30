@@ -15,7 +15,18 @@ CREATE TABLE IF NOT EXISTS students (
   "created_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS payments (
+  "id" TEXT PRIMARY KEY,
+  "studentId" TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  "month" TEXT NOT NULL, -- Format: YYYY-MM (e.g. '2026-08')
+  "amount" INTEGER NOT NULL,
+  "status" TEXT NOT NULL DEFAULT 'Pending',
+  "created_at" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE("studentId", "month")
+);
+
 -- Note: Since our Express backend server acts as a proxy using your secret API key,
 -- it will bypass Row Level Security (RLS) to manage the data.
--- You can leave RLS disabled for the "students" table or enable it without policies,
--- since only your Express server (not client browsers) will query it directly.
+-- You can leave RLS disabled for both tables, since only your Express server 
+-- (not client browsers) will query them directly.
+

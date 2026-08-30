@@ -1,6 +1,17 @@
 import React from 'react';
 
-export default function StudentTable({ students, onTogglePayment, onEditStudent, onDeleteStudent, onAddFirstClick }) {
+export default function StudentTable({ students, onTogglePayment, onAdjustFee, onEditStudent, onDeleteStudent, onAddFirstClick }) {
+  const handleAdjustFeeClick = (id, studentName, currentFee) => {
+    const promptVal = window.prompt(`Adjust tuition fee for ${studentName} for the selected month:`, currentFee);
+    if (promptVal === null) return;
+    const parsed = parseInt(promptVal, 10);
+    if (isNaN(parsed) || parsed < 0) {
+      alert('Please enter a valid amount.');
+      return;
+    }
+    onAdjustFee(id, parsed);
+  };
+
   if (students.length === 0) {
     return (
       <div id="empty-state" className="empty-state-wrapper">
@@ -58,9 +69,28 @@ export default function StudentTable({ students, onTogglePayment, onEditStudent,
                   {s.subjects} Sub{s.subjects > 1 ? 's' : ''}
                 </td>
                 <td>
-                  <div className="fee-cell">
-                    ₹{s.fee.toLocaleString('en-IN')}
-                    <span className="fee-sub-info">/ month</span>
+                  <div className="fee-cell" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                    <div>
+                      ₹{s.fee.toLocaleString('en-IN')}
+                      <span className="fee-sub-info">/ month</span>
+                    </div>
+                    <button 
+                      onClick={() => handleAdjustFeeClick(s.id, s.name, s.fee)}
+                      className="btn-action-text" 
+                      title="Adjust fee for this month"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        color: 'var(--neutral-muted)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        borderRadius: '4px'
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                    </button>
                   </div>
                 </td>
                 <td>
@@ -98,3 +128,4 @@ export default function StudentTable({ students, onTogglePayment, onEditStudent,
     </div>
   );
 }
+

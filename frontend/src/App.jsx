@@ -9,11 +9,19 @@ if (!API_BASE_URL.endsWith('/api')) {
   API_BASE_URL = `${API_BASE_URL}/api`;
 }
 
+const getCurrentMonthString = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+};
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [students, setStudents] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthString());
 
   // Check auth session on startup
   useEffect(() => {
@@ -23,16 +31,16 @@ export default function App() {
     }
   }, []);
 
-  // Fetch students database once authenticated
+  // Fetch students database once authenticated or month changes
   useEffect(() => {
     if (isAuthenticated) {
       fetchStudents();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, selectedMonth]);
 
   const fetchStudents = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/students`);
+      const response = await fetch(`${API_BASE_URL}/students?month=${selectedMonth}`);
       if (response.ok) {
         const data = await response.json();
         setStudents(data);
@@ -55,7 +63,7 @@ export default function App() {
     }
   };
 
-  // Toggle paid / pending badge status via API PUT
+  // Toggle paid / pending badge status for selected month via monthly payment endpoint
   const handleTogglePayment = async (id) => {
     const target = students.find((s) => s.id === id);
     if (!target) return;
@@ -63,20 +71,57 @@ export default function App() {
     const nextStatus = target.status === 'Paid' ? 'Pending' : 'Paid';
 
     try {
-      const response = await fetch(`${API_BASE_URL}/students/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/students/${id}/payment`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: nextStatus }),
+        body: JSON.stringify({ 
+          month: selectedMonth, 
+          status: nextStatus 
+        }),
       });
 
       if (response.ok) {
-        const updated = await response.json();
-        setStudents((prev) => prev.map((s) => (s.id === id ? updated : s)));
+        const updatedPayment = await response.json();
+        setStudents((prev) =>
+          prev.map((s) =>
+            s.id === id ? { ...s, status: updatedPayment.status } : s
+          )
+        );
       }
     } catch (err) {
       console.error('Failed to toggle payment status:', err);
+    }
+  };
+
+  // Adjust fee for selected month via monthly payment endpoint
+  const handleAdjustFee = async (id, newAmount) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/students/${id}/payment`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          month: selectedMonth,
+          amount: newAmount
+        }),
+      });
+
+      if (response.ok) {
+        const updatedPayment = await response.json();
+        setStudents((prev) =>
+          prev.map((s) =>
+            s.id === id ? { ...s, fee: updatedPayment.fee } : s
+          )
+        );
+      } else {
+        const errData = await response.json();
+        alert(errData.error || 'Failed to adjust monthly fee.');
+      }
+    } catch (err) {
+      console.error('Failed to adjust monthly fee:', err);
     }
   };
 
@@ -135,7 +180,14 @@ export default function App() {
       if (response.ok) {
         const data = await response.json();
         if (editingStudent) {
-          setStudents((prev) => prev.map((s) => (s.id === editingStudent.id ? data : s)));
+          // Keep month status / fee data when editing profile
+          setStudents((prev) =>
+            prev.map((s) =>
+              s.id === editingStudent.id
+                ? { ...data, status: s.status, fee: s.fee }
+                : s
+            )
+          );
         } else {
           setStudents((prev) => [...prev, data]);
         }
@@ -159,8 +211,11 @@ export default function App() {
     <>
       <Dashboard
         students={students}
+        selectedMonth={selectedMonth}
+        onMonthChange={setSelectedMonth}
         onLogout={handleLogout}
         onTogglePayment={handleTogglePayment}
+        onAdjustFee={handleAdjustFee}
         onAddStudent={handleAddStudentClick}
         onEditStudent={handleEditStudentClick}
         onDeleteStudent={handleDeleteStudent}
@@ -179,3 +234,4 @@ export default function App() {
     </>
   );
 }
+
