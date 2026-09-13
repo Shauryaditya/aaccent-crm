@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import StatsGrid from './StatsGrid';
 import StudentTable from './StudentTable';
+import TeacherSalaries from './TeacherSalaries';
+import StudentGrowth, { MonthRemovals } from './StudentGrowth';
 
 export default function Dashboard({ 
   students, 
+  apiBaseUrl,
+  onRefreshStudents,
   selectedMonth,
   onMonthChange,
   onLogout, 
@@ -17,6 +21,7 @@ export default function Dashboard({
   const [classFilter, setClassFilter] = useState('all');
   const [boardFilter, setBoardFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('students');
 
   const handleClearFilters = () => {
     setSearchQuery('');
@@ -78,6 +83,19 @@ export default function Dashboard({
         </div>
       </header>
 
+      <div className="dashboard-navigation glassmorphism">
+        <div role="tablist" aria-label="Management pages" className="dashboard-tabs">
+          <button id="students-tab" role="tab" aria-selected={activeTab === 'students'} aria-controls="students-panel" className={`btn ${activeTab === 'students' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('students')}>Student Directory</button>
+          <button id="salaries-tab" role="tab" aria-selected={activeTab === 'salaries'} aria-controls="salaries-panel" className={`btn ${activeTab === 'salaries' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('salaries')}>Teacher Salaries</button>
+          <button id="growth-tab" role="tab" aria-selected={activeTab === 'growth'} aria-controls="growth-panel" className={`btn ${activeTab === 'growth' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('growth')}>Student Growth</button>
+        </div>
+        <label className="dashboard-month" htmlFor="billing-month">Billing month
+          <input id="billing-month" type="month" required value={selectedMonth} onChange={e => { if (e.target.value) onMonthChange(e.target.value); }} className="dropdown-filter" />
+        </label>
+      </div>
+
+      {activeTab === 'students' ? <div id="students-panel" role="tabpanel" aria-labelledby="students-tab">
+
       {/* Stats KPI Overview */}
       <StatsGrid students={students} />
 
@@ -103,18 +121,6 @@ export default function Dashboard({
             />
           </div>
           <div className="filter-dropdowns">
-            {/* Billing Month Picker */}
-            <div className="month-picker-container" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Month:</span>
-              <input 
-                type="month" 
-                value={selectedMonth} 
-                onChange={(e) => onMonthChange(e.target.value)}
-                className="dropdown-filter"
-                style={{ padding: '0.55rem 0.65rem', minWidth: '150px' }}
-              />
-            </div>
-
             <select 
               value={classFilter} 
               onChange={(e) => setClassFilter(e.target.value)}
@@ -172,8 +178,11 @@ export default function Dashboard({
           onDeleteStudent={onDeleteStudent}
           onAddFirstClick={onAddStudent}
         />
+        <MonthRemovals key={selectedMonth} apiBaseUrl={apiBaseUrl} month={selectedMonth} students={students} onRefreshStudents={onRefreshStudents} />
       </section>
+      </div> : activeTab === 'salaries' ? <div id="salaries-panel" role="tabpanel" aria-labelledby="salaries-tab">
+        <TeacherSalaries key={selectedMonth} students={students} month={selectedMonth} apiBaseUrl={apiBaseUrl} />
+      </div> : <div id="growth-panel" role="tabpanel" aria-labelledby="growth-tab"><StudentGrowth apiBaseUrl={apiBaseUrl} selectedMonth={selectedMonth} /></div>}
     </div>
   );
 }
-

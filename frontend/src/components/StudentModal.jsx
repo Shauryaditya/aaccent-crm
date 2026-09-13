@@ -22,6 +22,7 @@ export default function StudentModal({ student, onClose, onSave }) {
   const [subjects, setSubjects] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('Pending');
   const [customFee, setCustomFee] = useState('');
+  const [admissionDate, setAdmissionDate] = useState('');
 
   const isEditing = !!student;
 
@@ -35,7 +36,8 @@ export default function StudentModal({ student, onClose, onSave }) {
       setBoard(student.board);
       setSubjects(student.subjects.toString());
       setPaymentStatus(student.status);
-      setCustomFee(student.fee !== undefined ? student.fee.toString() : '');
+      setCustomFee(String(student.baseFee ?? student.fee ?? ''));
+      setAdmissionDate(student.admissionDate || student.created_at?.slice(0, 10) || '');
     } else {
       setName('');
       setParentName('');
@@ -46,6 +48,8 @@ export default function StudentModal({ student, onClose, onSave }) {
       setSubjects('');
       setPaymentStatus('Pending');
       setCustomFee('');
+      const today = new Date();
+      setAdmissionDate(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
     }
   }, [student]);
 
@@ -100,6 +104,7 @@ export default function StudentModal({ student, onClose, onSave }) {
 
     const payload = {
       name,
+      admissionDate,
       parentName,
       phone,
       email,
@@ -124,6 +129,11 @@ export default function StudentModal({ student, onClose, onSave }) {
         </div>
         
         <form onSubmit={handleSubmit} className="modal-form">
+          <div className="form-group">
+            <label htmlFor="admission-date">Admission date *</label>
+            <input id="admission-date" type="date" required value={admissionDate} onChange={e => setAdmissionDate(e.target.value)} />
+            <small>The student appears in billing from this month onwards.</small>
+          </div>
           <div className="modal-grid-row modal-grid-row-stack-mobile">
             <div className="form-group">
               <label htmlFor="student-name">Student Full Name <span className="required">*</span></label>

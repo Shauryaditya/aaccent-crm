@@ -1019,3 +1019,31 @@ h1, h2, h3, h4, h5, h6 {
     width: 100%;
   }
 }
+/* Monthly teacher salary ledger */
+.app-alert-dialog { width: min(460px, calc(100vw - 2rem)); padding: 1.5rem; border: 1px solid var(--neutral-border); border-radius: var(--radius-sm); background: white; color: var(--neutral-dark, #172638); box-shadow: 0 20px 60px #0003; }
+.app-alert-dialog::backdrop { background: #13223899; backdrop-filter: blur(4px); }
+.alert-dialog-description { margin: 1rem 0; line-height: 1.6; }
+.alert-dialog-description p + p { margin-top: .75rem; }
+.btn-danger { background: var(--danger, #b42318); color: white; }
+.app-alert-dialog .modal-actions { flex-wrap: wrap; }
+.growth-description { margin: 1rem 0; line-height: 1.6; }
+.growth-heading { margin: 1.5rem 0 .75rem; }
+.month-removals { margin-top: 1rem; }
+.removed-student { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; padding: .75rem 0; }
+.dashboard-navigation { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; margin-bottom: 1.5rem; }
+.dashboard-tabs { display: flex; gap: .75rem; flex-wrap: wrap; }
+.dashboard-month { display: flex; align-items: center; gap: .75rem; font-weight: 600; }
+@media (max-width: 700px) { .dashboard-navigation { flex-direction: column; align-items: stretch; } .dashboard-month { justify-content: space-between; } }
+.salary-section { margin-top: 1.5rem; }
+.salary-section > p { margin: 1rem 0; }
+.salary-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0; }
+.salary-cards h3 { margin: .5rem 0; }
+.salary-cards p { font-size: .85rem; }
+.salary-form { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0; }
+.salary-form label { display: flex; flex-direction: column; gap: .5rem; font-size: .85rem; }
+.salary-form input, .salary-form select { padding: .7rem; border: 1px solid #ccd5df; border-radius: 8px; background: white; color: #172638; min-width: 0; }
+.salary-table-wrap { overflow-x: auto; }
+.salary-table { width: 100%; border-collapse: collapse; }
+.salary-table th, .salary-table td { text-align: left; padding: .75rem; border-bottom: 1px solid #ccd5df; }
+.salary-error { color: #b42318; }
+@media (max-width: 700px) { .salary-cards, .salary-form { grid-template-columns: 1fr; } }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import StudentModal from './components/StudentModal';
+import AlertDialog from './components/AlertDialog';
 
 let API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 API_BASE_URL = API_BASE_URL.replace(/\/+$/, '');
@@ -22,6 +23,11 @@ export default function App() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthString());
+  const [removal, setRemoval] = useState(null);
+  const [removing, setRemoving] = useState(false);
+  const [removalError, setRemovalError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
   // Check auth session on startup
   useEffect(() => {
@@ -56,11 +62,14 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    if (window.confirm('Are you sure you want to log out from Aaccent CRM?')) {
+    setLogoutOpen(true);
+  };
+
+  const confirmLogout = () => {
       sessionStorage.removeItem('aaccent_crm_authenticated_token');
       setIsAuthenticated(false);
       setStudents([]);
-    }
+      setLogoutOpen(false);
   };
 
   // Toggle paid / pending badge status for selected month via monthly payment endpoint
@@ -118,7 +127,7 @@ export default function App() {
         );
       } else {
         const errData = await response.json();
-        alert(errData.error || 'Failed to adjust monthly fee.');
+        setNotice(errData.error || 'Failed to adjust monthly fee.');
       }
     } catch (err) {
       console.error('Failed to adjust monthly fee:', err);
@@ -127,19 +136,26 @@ export default function App() {
 
   // Delete student via API DELETE
   const handleDeleteStudent = async (id, name) => {
-    if (window.confirm(`Are you sure you want to permanently delete the student records for ${name}?`)) {
+    setRemovalError('');
+    setRemoval({ id, name, month: selectedMonth });
+  };
+
+  const confirmRemoval = async () => {
+    if (!removal || removing) return;
+    setRemoving(true);
+    setRemovalError('');
       try {
-        const response = await fetch(`${API_BASE_URL}/students/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/students/${removal.id}?month=${removal.month}`, {
           method: 'DELETE',
         });
 
         if (response.ok) {
-          setStudents((prev) => prev.filter((s) => s.id !== id));
-        }
+          setStudents((prev) => prev.filter((s) => s.id !== removal.id));
+          setRemoval(null);
+        } else setRemovalError((await response.json()).error || 'Unable to remove student from this month.');
       } catch (err) {
-        console.error('Failed to delete student:', err);
-      }
-    }
+        setRemovalError('Unable to connect. Please try again.');
+      } finally { setRemoving(false); }
   };
 
   // Handle opening modal for editing or adding
@@ -179,27 +195,21 @@ export default function App() {
 
       if (response.ok) {
         const data = await response.json();
-        if (editingStudent) {
-          // Keep month status / fee data when editing profile
-          setStudents((prev) =>
-            prev.map((s) =>
-              s.id === editingStudent.id
-                ? { ...data, status: s.status, fee: s.fee }
-                : s
-            )
-          );
-        } else {
-          setStudents((prev) => [...prev, data]);
-        }
+        const paymentResponse = await fetch(`${API_BASE_URL}/students/${data.id}/payment`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ month: editingStudent ? selectedMonth : studentPayload.admissionDate.slice(0, 7), status: studentPayload.status })
+        });
+        if (!paymentResponse.ok) setNotice('Profile saved, but payment status could not be saved. Please check the selected billing month.');
+        await fetchStudents();
         setModalOpen(false);
         setEditingStudent(null);
       } else {
         const errData = await response.json();
-        alert(`Error saving student: ${errData.error || 'Server error'}`);
+        setNotice(`Error saving student: ${errData.error || 'Server error'}`);
       }
     } catch (err) {
       console.error('Save student API error:', err);
-      alert('Network error while saving student profile.');
+      setNotice('Network error while saving student profile.');
     }
   };
 
@@ -211,6 +221,8 @@ export default function App() {
     <>
       <Dashboard
         students={students}
+        apiBaseUrl={API_BASE_URL}
+        onRefreshStudents={fetchStudents}
         selectedMonth={selectedMonth}
         onMonthChange={setSelectedMonth}
         onLogout={handleLogout}
@@ -231,7 +243,12 @@ export default function App() {
           onSave={handleSaveStudent}
         />
       )}
+      {removal && <AlertDialog title="Remove from this month?" confirmLabel="Remove from this month" danger busy={removing} error={removalError} onClose={() => setRemoval(null)} onConfirm={confirmRemoval}>
+        <p>Remove <strong>{removal.name}</strong> from <strong>{new Date(`${removal.month}-01T12:00:00`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</strong> only?</p>
+        <p>Their other months and payment history will remain saved. You can restore them from the removed students list.</p>
+      </AlertDialog>}
+      {notice && <AlertDialog title="Student update" onClose={() => setNotice('')}>{notice}</AlertDialog>}
+      {logoutOpen && <AlertDialog title="Log out?" confirmLabel="Log out" onConfirm={confirmLogout} onClose={() => setLogoutOpen(false)}>End your administrator session?</AlertDialog>}
     </>
   );
 }
-
