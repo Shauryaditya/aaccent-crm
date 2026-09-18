@@ -39,10 +39,4 @@ function eligibleTeachers(className, subject) {
   if (grade < 4 || grade > 12) return [];
   return TEACHERS.filter(t => t.id === 'subrata' ? subject === 'Maths' : t.id === 'mukta' ? subject === 'Physics' || (subject === 'Chemistry' && grade <= 10) : subject === 'Computer' || (grade <= 7 && ['Science', 'Maths'].includes(subject)));
 }
-function calculateTeacherShare(fee, subjects) {
-  const amount = Number(fee);
-  const count = Number(subjects);
-  if (!Number.isFinite(amount) || amount < 0 || !Number.isInteger(count) || count < 1) throw new Error('Invalid monthly fee or subject count.');
-  return Math.round(amount * 100 / count) / 100;
-}
-module.exports = { validMonth, validDate, admissionDate, withLegacyAdmission, enrolledInMonth, activeInMonth, growthReport, TEACHERS, eligibleTeachers, calculateTeacherShare };
+module.exports = { validMonth, validDate, admissionDate, withLegacyAdmission, enrolledInMonth, activeInMonth, growthReport, TEACHERS, eligibleTeachers };

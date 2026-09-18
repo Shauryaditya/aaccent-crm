@@ -4,7 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const { createClient } = require('@supabase/supabase-js');
 const { randomUUID } = require('crypto');
-const { validMonth, validDate, withLegacyAdmission, enrolledInMonth, activeInMonth, growthReport, TEACHERS, eligibleTeachers, calculateTeacherShare } = require('./monthly');
+const { validMonth, validDate, withLegacyAdmission, enrolledInMonth, activeInMonth, growthReport, TEACHERS, eligibleTeachers } = require('./monthly');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -412,16 +412,17 @@ app.get('/api/teacher-salaries', async (req, res) => {
     const entries = data.filter(entry => profiles.some(s => s.id === entry.studentId && activeInMonth(s, month, exclusions))).map(entry => {
       const student = students.find(s => s.id === entry.studentId);
       const fee = payments.find(p => p.studentId === student.id && p.month === month)?.amount ?? student.fee;
-      return { ...entry, monthlyFee: fee, subjects: student.subjects, teacherShare: calculateTeacherShare(fee, student.subjects) };
+      return { ...entry, monthlyFee: fee, subjects: student.subjects };
     });
     res.json({ teachers: TEACHERS, entries });
   } catch { res.status(500).json({ error: 'Unable to load teacher salaries.' }); }
 });
 
 app.post('/api/teacher-salaries', async (req, res) => {
-  const { month, studentId, subject, teacherId, classes = 0 } = req.body;
-  if (!validMonth(month) || !Number.isInteger(classes) || classes < 0) {
-    return res.status(400).json({ error: 'Enter a valid month and nonnegative class count.' });
+  const { month, studentId, subject, teacherId, classes = 0, teacherShare } = req.body;
+  const share = Number(teacherShare);
+  if (!validMonth(month) || !Number.isInteger(classes) || classes < 0 || !Number.isFinite(share) || share < 0) {
+    return res.status(400).json({ error: 'Enter a valid month, class count, and nonnegative teacher price.' });
   }
   try {
     const { data: student, error: studentError } = await supabase.from('students').select('*').eq('id', studentId).single();
@@ -439,8 +440,7 @@ app.post('/api/teacher-salaries', async (req, res) => {
     const previous = existing.find(e => e.subject === subject);
     if (!previous && new Set(existing.map(e => e.subject)).size >= student.subjects) return res.status(400).json({ error: 'All this student’s subjects are already assigned. Edit an existing entry or correct the subject count.' });
     const monthlyFee = payment?.amount ?? student.fee;
-    const teacherShare = calculateTeacherShare(monthlyFee, student.subjects);
-    const { data, error } = await supabase.from('teacher_classes').upsert({ id: previous?.id || randomUUID(), month, studentId, studentName: student.name, studentClass: student.class, subject, teacherId, classes, teacherShare }, { onConflict: 'month,studentId,subject' }).select().single();
+    const { data, error } = await supabase.from('teacher_classes').upsert({ id: previous?.id || randomUUID(), month, studentId, studentName: student.name, studentClass: student.class, subject, teacherId, classes, teacherShare: Math.round(share * 100) / 100 }, { onConflict: 'month,studentId,subject' }).select().single();
     if (error) return res.status(500).json({ error: error.message });
     res.status(201).json({ ...data, monthlyFee, subjects: student.subjects });
   } catch { res.status(500).json({ error: 'Unable to save teacher share.' }); }

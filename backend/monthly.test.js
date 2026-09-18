@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { enrolledInMonth, activeInMonth, withLegacyAdmission, growthReport, eligibleTeachers, validDate, validMonth, calculateTeacherShare } = require('./monthly');
+const { enrolledInMonth, activeInMonth, withLegacyAdmission, growthReport, eligibleTeachers, validDate, validMonth } = require('./monthly');
 test('A legacy September-created profile with an August payment belongs in August', () => {
   const student = { id: 'diya', created_at: '2026-09-12T01:57:49Z' };
   const payments = [{ studentId: 'diya', month: '2026-08' }, { studentId: 'diya', month: '2026-09' }];
@@ -27,13 +27,6 @@ test('Growth reports monthly net changes and quarter/year closing counts without
   assert.equal(report.quarterly[2].change, 1);
   assert.equal(report.yearly.total, 2);
   assert.equal(report.yearly.change, 2);
-});
-test('Split each student fee equally per subject, including adjusted fees and paise', () => {
-  assert.equal(calculateTeacherShare(2700, 3), 900);
-  assert.equal(calculateTeacherShare(2400, 3), 800);
-  assert.equal(calculateTeacherShare(1000, 3), 333.33);
-  assert.equal(calculateTeacherShare(0, 3), 0);
-  assert.throws(() => calculateTeacherShare(2700, 0));
 });
 test('September admission never appears in August, but appears from September onwards', () => {
   const student = { admissionDate: '2026-09-15' };
