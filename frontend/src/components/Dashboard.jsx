@@ -22,12 +22,15 @@ export default function Dashboard({
   const [boardFilter, setBoardFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('students');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const handleClearFilters = () => {
     setSearchQuery('');
     setClassFilter('all');
     setBoardFilter('all');
     setStatusFilter('all');
+    setCurrentPage(1);
   };
 
   // Perform local search and filtering of the students database array
@@ -53,6 +56,12 @@ export default function Dashboard({
     classFilter !== 'all' || 
     boardFilter !== 'all' || 
     statusFilter !== 'all';
+
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
+  const visiblePage = Math.min(currentPage, totalPages);
+  const pageStart = (visiblePage - 1) * pageSize;
+  const paginatedStudents = filteredStudents.slice(pageStart, pageStart + pageSize);
+  const changePage = page => setCurrentPage(Math.min(totalPages, Math.max(1, page)));
 
   return (
     <div className="app-layout">
@@ -90,7 +99,7 @@ export default function Dashboard({
           <button id="growth-tab" role="tab" aria-selected={activeTab === 'growth'} aria-controls="growth-panel" className={`btn ${activeTab === 'growth' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('growth')}>Student Growth</button>
         </div>
         <label className="dashboard-month" htmlFor="billing-month">Billing month
-          <input id="billing-month" type="month" required value={selectedMonth} onChange={e => { if (e.target.value) onMonthChange(e.target.value); }} className="dropdown-filter" />
+          <input id="billing-month" type="month" required value={selectedMonth} onChange={e => { if (e.target.value) { setCurrentPage(1); onMonthChange(e.target.value); } }} className="dropdown-filter" />
         </label>
       </div>
 
@@ -117,13 +126,13 @@ export default function Dashboard({
               type="text" 
               placeholder="Search by name, parent name, phone..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
             />
           </div>
           <div className="filter-dropdowns">
             <select 
               value={classFilter} 
-              onChange={(e) => setClassFilter(e.target.value)}
+              onChange={(e) => { setClassFilter(e.target.value); setCurrentPage(1); }}
               className="dropdown-filter"
             >
               <option value="all">All Classes</option>
@@ -140,7 +149,7 @@ export default function Dashboard({
             
             <select 
               value={boardFilter} 
-              onChange={(e) => setBoardFilter(e.target.value)}
+              onChange={(e) => { setBoardFilter(e.target.value); setCurrentPage(1); }}
               className="dropdown-filter"
             >
               <option value="all">All Boards</option>
@@ -153,7 +162,7 @@ export default function Dashboard({
 
             <select 
               value={statusFilter} 
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
               className="dropdown-filter"
             >
               <option value="all">All Payment Statuses</option>
@@ -171,13 +180,28 @@ export default function Dashboard({
 
         {/* Directory Table */}
         <StudentTable 
-          students={filteredStudents}
+          students={paginatedStudents}
           onTogglePayment={onTogglePayment}
           onAdjustFee={onAdjustFee}
           onEditStudent={onEditStudent}
           onDeleteStudent={onDeleteStudent}
           onAddFirstClick={onAddStudent}
         />
+        {filteredStudents.length > 0 && <nav className="pagination" aria-label="Student directory pagination">
+          <p className="pagination-summary">Showing {pageStart + 1}–{Math.min(pageStart + pageSize, filteredStudents.length)} of {filteredStudents.length} students</p>
+          <label className="pagination-size">Rows
+            <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }} className="dropdown-filter" aria-label="Students per page">
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </select>
+          </label>
+          <div className="pagination-controls">
+            <button className="btn btn-secondary btn-small" onClick={() => changePage(visiblePage - 1)} disabled={visiblePage === 1} aria-label="Previous page">Previous</button>
+            <span aria-live="polite">Page {visiblePage} of {totalPages}</span>
+            <button className="btn btn-secondary btn-small" onClick={() => changePage(visiblePage + 1)} disabled={visiblePage === totalPages} aria-label="Next page">Next</button>
+          </div>
+        </nav>}
         <MonthRemovals key={selectedMonth} apiBaseUrl={apiBaseUrl} month={selectedMonth} students={students} onRefreshStudents={onRefreshStudents} />
       </section>
       </div> : activeTab === 'salaries' ? <div id="salaries-panel" role="tabpanel" aria-labelledby="salaries-tab">

@@ -1028,6 +1028,34 @@ h1, h2, h3, h4, h5, h6 {
 .app-alert-dialog .modal-actions { flex-wrap: wrap; }
 .growth-description { margin: 1rem 0; line-height: 1.6; }
 .growth-heading { margin: 1.5rem 0 .75rem; }
+.growth-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.growth-chart-card { min-width: 0; padding: 1rem; border: 1px solid var(--neutral-border); border-radius: var(--radius-lg); background: var(--white); box-shadow: var(--shadow-sm); }
+.growth-chart-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; }
+.growth-chart-title h3 { margin: 0 0 .25rem; color: var(--primary-dark); }
+.growth-chart-title p { margin: 0; color: var(--neutral-muted); font-size: .82rem; }
+.growth-chart-scroll { overflow-x: auto; }
+.growth-chart { display: block; width: 100%; min-width: 560px; height: auto; }
+.chart-grid-line { stroke: var(--neutral-border); stroke-width: 1; }
+.chart-axis-label { fill: var(--neutral-muted); font-size: 11px; }
+.chart-value-label { fill: var(--primary-dark); font-size: 11px; font-weight: 700; }
+.chart-total-area { fill: var(--info-light); stroke: none; opacity: .7; }
+.chart-total-line { fill: none; stroke: var(--primary); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.chart-total-point { fill: var(--white); stroke: var(--primary); stroke-width: 3; }
+.chart-bar-added { fill: var(--success); }
+.chart-bar-removed { fill: var(--danger); }
+.chart-legend-group { display: flex; gap: .75rem; flex-wrap: wrap; justify-content: flex-end; }
+.chart-legend { display: inline-flex; align-items: center; gap: .35rem; color: var(--neutral-muted); font-size: .75rem; font-weight: 700; white-space: nowrap; }
+.chart-legend::before { content: ''; width: 9px; height: 9px; border-radius: 3px; background: var(--primary); }
+.chart-legend-added::before { background: var(--success); }
+.chart-legend-removed::before { background: var(--danger); }
+.growth-data-details { margin-top: 1rem; border: 1px solid var(--neutral-border); border-radius: var(--radius-md); }
+.growth-data-details summary { padding: 1rem; cursor: pointer; font-weight: 700; color: var(--primary); }
+.growth-data-details .salary-table-wrap { padding: 0 1rem 1rem; }
+.pagination { display: flex; align-items: center; justify-content: flex-end; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--neutral-border); }
+.pagination-summary { margin-right: auto; color: var(--neutral-muted); font-size: .875rem; }
+.pagination-size, .pagination-controls { display: flex; align-items: center; gap: .65rem; font-size: .875rem; font-weight: 600; }
+.pagination-size .dropdown-filter { padding: .5rem 1.8rem .5rem .65rem; }
+.pagination-controls span { min-width: 78px; text-align: center; }
 .month-removals { margin-top: 1rem; }
 .removed-student { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; padding: .75rem 0; }
 .dashboard-navigation { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; margin-bottom: 1.5rem; }
@@ -1051,4 +1079,6 @@ h1, h2, h3, h4, h5, h6 {
 .inline-price input { width: 110px; padding: .5rem; border: 1px solid var(--primary); border-radius: 6px; }
 .btn-small { padding: .45rem .65rem; font-size: .78rem; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-@media (max-width: 700px) { .salary-cards, .salary-form { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .growth-charts { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .salary-cards, .salary-form { grid-template-columns: 1fr; } .pagination { justify-content: space-between; } .pagination-summary { width: 100%; margin-right: 0; } }
+@media (max-width: 480px) { .pagination-size { width: 100%; justify-content: space-between; } .pagination-controls { width: 100%; justify-content: space-between; } .growth-chart-title { flex-direction: column; } }
